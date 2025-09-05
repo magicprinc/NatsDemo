@@ -1,0 +1,174 @@
+plugins {
+	id 'idea'
+	id 'java-library'
+	id 'maven-publish'
+
+	alias(libs.plugins.lombok)
+	alias(libs.plugins.errorprone)
+}
+
+repositories {
+	mavenLocal()
+	mavenCentral {
+		mavenContent { releasesOnly() }
+	}
+	maven {
+		url = "https://mvn.platform-s.com/repository/internal" // our repo is very slow, use it for our dependencies only
+		mavenContent { releasesOnly() }
+	}
+	maven { url = 'https://jitpack.io' }
+	maven {
+		url = "https://repo1.maven.org/maven2/" // https://github.com/nats-io/nats.java#using-gradle
+	}
+}
+
+idea { module { downloadJavadoc = true; downloadSources = true } }// чтобы качало sources и javadocs ИЗ maven
+
+java {
+	withSourcesJar() // чтобы собирало исходники для публикации в maven
+}
+
+lombok { version = 'latest.release' }
+
+tasks.withType(JavaCompile).configureEach {
+	options.encoding = 'UTF-8' // = compileJava.options.encoding = "UTF-8"
+	options.compilerArgs.addAll(['-Xlint:all,-serial', '-parameters'])
+	options.release.set(21)// javac --release 7→8..25+
+	options.deprecation = true
+	options.debug = true
+
+	options.errorprone {
+		enabled = true
+		disableWarningsInGeneratedCode = true
+		excludedPaths = ".*/(generated|test).*/.*"
+		disable("UnusedVariable")
+		disable("MissingSummary")
+		disable("StringConcatToTextBlock")
+		errorproneArgs = ["-XepExcludedPaths:.*/test/.*"]
+	}
+}
+
+tasks.withType(AbstractArchiveTask).configureEach {
+	preserveFileTimestamps = false
+	reproducibleFileOrder = true
+}
+
+publishing {
+	publications {
+		maven(MavenPublication) {
+			from components.java
+			// не ругаться на версии с +
+			suppressPomMetadataWarningsFor('runtimeElements')
+		}
+	}
+}
+tasks.withType(GenerateModuleMetadata).configureEach {
+	enabled = false // не генерировать Gradle-JSON-"убийцу"-POM, наш Jenkins его игнорит
+}
+
+test { //or: tasks.named('test'){ or: tasks.withType(Test).configureEach // https://docs.gradle.org/current/dsl/org.gradle.api.tasks.testing.Test.html
+	useJUnitPlatform()
+/*  testLogging {
+	events "passed", "skipped", "failed"
+	showStandardStreams = true // show standard out & err of the test JVM on the console
+	showExceptions = true
+	exceptionFormat = 'full'
+  } */
+	enableAssertions = true
+	maxHeapSize = "5G"
+	// --add-exports = export package for normal (public) access at compile and runtime.
+	// --add-opens =   open package for DEEP reflective access (including private) at runtime only.
+	// Use --add-exports if only public access is required; use --add-opens if reflective access to _private members_ is needed. Both break module encapsulation and should be used cautiously.
+	jvmArgs += [
+		'-XX:MaxDirectMemorySize=3G',
+		'-XX:+EnableDynamicAgentLoading',
+		'-showversion',
+		'-XX:ActiveProcessorCount=32',
+		'-Djdk.tracePinnedThreads=full',
+		//'-XX:+UseParallelGC',
+		'-XX:+HeapDumpOnOutOfMemoryError',
+		'-XX:+UseCompressedOops',
+		'-XX:-OmitStackTraceInFastThrow',
+		'-Djava.net.preferIPv4Stack=true', // Ignite просит если не используешь IPv6
+		'-Dfile.encoding=UTF-8',
+		'-XX:+DoEscapeAnalysis',
+		'-XX:CompileCommand=inline,java/lang/String.charAt',
+		// Ignite нужна только часть этих опций (https://ignite.apache.org/docs/latest/quick-start/java -or- https://ignite.apache.org/docs/ignite3/latest/quick-start/embedded-mode):
+		'-Dio.netty.tryReflectionSetAccessible=true',
+		'--add-opens=java.base/jdk.internal.misc=ALL-UNNAMED',
+		'--add-opens=java.base/jdk.internal.access=ALL-UNNAMED',
+		'--add-opens=java.base/sun.nio.ch=ALL-UNNAMED',
+		'--add-opens=java.management/com.sun.jmx.mbeanserver=ALL-UNNAMED',
+		'--add-opens=jdk.internal.jvmstat/sun.jvmstat.monitor=ALL-UNNAMED',
+		'--add-opens=java.base/sun.reflect.generics.reflectiveObjects=ALL-UNNAMED',
+		'--add-opens=jdk.management/com.sun.management.internal=ALL-UNNAMED',
+		'--add-opens=java.base/java.io=ALL-UNNAMED',
+		'--add-opens=java.base/java.nio=ALL-UNNAMED',
+		'--add-opens=java.base/java.util=ALL-UNNAMED',
+		'--add-opens=java.base/java.util.concurrent=ALL-UNNAMED',
+		'--add-opens=java.base/java.util.concurrent.locks=ALL-UNNAMED',
+		'--add-opens=java.base/java.util.concurrent.atomic=ALL-UNNAMED',
+		'--add-opens=java.base/java.lang=ALL-UNNAMED',
+		'--add-opens=java.base/java.lang.invoke=ALL-UNNAMED',
+		'--add-opens=java.base/java.lang.reflect=ALL-UNNAMED',
+		'--add-opens=java.base/java.math=ALL-UNNAMED',
+		'--add-opens=java.base/java.time=ALL-UNNAMED',
+		'--add-opens=java.sql/java.sql=ALL-UNNAMED',
+		'--add-opens=java.base/java.net=ALL-UNNAMED'
+	]
+	println "[INFO] file.encoding: ${System.getProperty("file.encoding")}/${getDefaultCharacterEncoding()}, " +
+			"slf4j: ${System.getProperty("slf4j.detectLoggerNameMismatch")}, TZ: ${System.getProperty("user.timezone")}, lang: ${System.getProperty("user.language")}"
+	systemProperty("file.encoding", "UTF-8") // almost no-op
+	systemProperty("user.timezone", System.getProperty("user.timezone"))
+	systemProperty("user.language", System.getProperty("user.language"))
+
+	// gradle -Dmy.sys.prop=value НЕ передаёт в my.sys.prop=value в forked test. Хитрый хак: -D&my.sys.prop=5
+	for (entry in System.getProperties()){
+		if (entry.key.toString().startsWith("&"))
+			options { systemProperty(entry.key.toString().substring(1), entry.value) }
+	}
+	// в multi-project нас чаще запускают в корне, но могут в our subproject dir: где искать конфиги?!
+	workingDir project.projectDir // Set the working directory to the subproject directory e.g. fink-lab/common-utils
+	systemProperty("user.dir", project.projectDir) // контрольная перестраховка ^
+	println "[INFO] Test JVM: ${getJavaVersion()} = ${getExecutable()==null ? org.gradle.internal.jvm.Jvm.current().getJavaExecutable().getAbsolutePath() : getExecutable()}"
+	try { println "[INFO] Test JVM: ${javaLauncher.get().executablePath} = ${javaLauncher.get().metadata.getJvmVersion()}" } catch (Throwable ignore){}
+	println "[INFO] ${project.name}.workingDir = $workingDir\n${"*".repeat(120)}"
+}
+
+dependencies {
+	errorprone("com.google.errorprone:error_prone_core:latest.release")
+
+	compileOnly libs.bundles.coreAnnotation
+	compileOnly libs.slf4jApi
+	implementation libs.commonUtils
+	implementation libs.commonData
+	implementation libs.guava, libs.commonsLang3, libs.micrometerCore
+	implementation libs.bundles.jackson
+
+	api(libs.natsCore, libs.natsSpring) // NATS.io 🚀
+
+	compileOnly libs.springBootStarterActuator
+
+	// TEST
+	testImplementation libs.bundles.junit
+	testImplementation 'redis.clients:jedis:6.+'
+	//testImplementation 'org.apache.ignite:ignite-api:3.+'
+	testImplementation 'org.apache.ignite:ignite-core:2.+' // 3.+
+	//testImplementation 'org.apache.ignite:ignite-runner:3.+'
+	testImplementation 'org.apache.ignite:ignite-indexing:2.+'
+	testImplementation 'org.apache.ignite:ignite-spring:2.+'
+	//testImplementation("org.apache.ignite:ignite-storage-rocksdb:3.+")
+	testRuntimeOnly libs.bundles.junitRuntime
+	testImplementation libs.testcontainers.junit
+	testImplementation libs.rocksdb
+}
+
+configurations.configureEach { // .implementation? https://tomgregory.com/how-to-exclude-gradle-dependencies/
+	// используем slf4j + logback ⇒ вырезаем конкурентов
+	exclude group: "commons-logging", module: "commons-logging"
+	exclude group: 'org.springframework', module: 'spring-jcl'
+	exclude group: "org.apache.logging.log4j", module: "log4j-api" // vertx,spring-boot-starter-logging тянут
+	exclude group: "org.apache.logging.log4j", module: "log4j-to-slf4j"
+	exclude group: "org.jboss.slf4j", module: "slf4j-jboss-logmanager"
+	exclude group: 'com.google.guava', module: 'listenablefuture'
+}
