@@ -362,13 +362,13 @@ okHttp = ["okHttpClient","okhttpLoggingInterceptor","okio","okhttpInterceptorBro
 
 slf4j = ["slf4jApi", "slf4jJCL", "slf4jJUL", "slf4jLog4j"]
 
-upgradeBootApp = [ # "hikariCP" boot обнаруживает его и требует jdbc url в конфиге
+upgradeBootApp = [
 	"errorprone","jakarta-annotationApi",
 	"jacksonCore","jacksonDatabind","jacksonAnnotations", "jacksonDatatypeJsr310","jacksonDatatypeJdk8","jacksonModuleParameterNames", "fastDoubleParser",
 	"woodstoxXml", "snakeYaml",
 	"jakarta-validationApi", "swaggerAnnotations",
 	"guava", "commonsLang3", "caffeine", # "slf4jApi", "slf4jJCL", "slf4jJUL", "slf4jLog4j",
-	"commonUtils", "commonMetricsExt", "micrometerCore", "micrometerRegistryPrometheus",
+	"micrometerCore", "micrometerRegistryPrometheus",
 	"springCore","springContext","springJdbc", "springWeb","springBeans","springContextSupport","springTx","springWebMvc","springAOP","springExpression",
 	"jbossLogging", "logbackCore","logback","logbackGelfSiegmar"
 	]

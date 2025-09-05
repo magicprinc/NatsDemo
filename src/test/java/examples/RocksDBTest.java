@@ -1,24 +1,27 @@
-package com.devinotele.common.nats.component;
+package examples;
 
+import lombok.SneakyThrows;
 import lombok.val;
-import org.jooq.lambda.Loops;
-import org.jooq.lambda.MILLI;
-import org.jooq.lambda.NANO;
-import org.jooq.lambda.concurrent.JThread;
-import org.jooq.lambda.conf.JProperties;
-import org.jooq.lambda.test.Waiter;
-import org.jooq.lambda.util.JIO;
 import org.junit.jupiter.api.Test;
 import org.rocksdb.CompressionType;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 
+import static examples.MagicUtils.TEMP_DIR;
+import static examples.MagicUtils.asLatin1;
+import static examples.MagicUtils.asStr;
+import static examples.MagicUtils.execute;
+import static examples.MagicUtils.loop;
+import static examples.MagicUtils.normPath;
+import static examples.MagicUtils.now;
+import static examples.MagicUtils.perfToString;
 import static java.nio.charset.StandardCharsets.*;
-import static org.jooq.lambda.JCore.asLatin1;
-import static org.jooq.lambda.JCore.asStr;
 import static org.junit.jupiter.api.Assertions.*;
 
 /// https://github.com/facebook/rocksdb/tree/main/java
@@ -41,9 +44,9 @@ public class RocksDBTest {
 		RocksDB.loadLibrary();
 	}
 
-	@Test
+	@Test  @SneakyThrows
 	void benchmark () {
-		String dbPath = JIO.normPath(JProperties.TEMP_DIR.toString());
+		String dbPath = normPath(TEMP_DIR.toString());
 		System.out.println(dbPath);
 		val options = new Options()
 			.setCreateIfMissing(true)
@@ -77,24 +80,24 @@ public class RocksDBTest {
 			db.delete("key1".getBytes());
 
 			//1. Создадим 100 млн ключей
-			long t = MILLI.now();
+			long t = now();
 			for (int i = 0; i < 10_000_000; ){
 				db.put(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1), Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1));
 				if (++i % 100_000 == 0){
 					System.out.println(i);
 				}
 			}
-			System.out.println(MILLI.toString(t, NANO.now(), 10_000_000));
+			System.out.println(perfToString(t, now(), 10_000_000));
 
 			System.out.println("А теперь скорость чтения...");
-			t = MILLI.now();
+			t = now();
 			for (int i = 0; i < 10_000_000; ){
 				var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
 				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
 				if (++i % 100_000 == 0)
 						System.out.println(i);
 			}
-			System.out.println(MILLI.toString(t, NANO.now(), 10_000_000));
+			System.out.println(perfToString(t, now(), 10_000_000));
 
 
 //			System.out.println("А теперь скорость чтения СЛУЧАЙНЫХ чтений...");
@@ -110,9 +113,10 @@ public class RocksDBTest {
 //			System.out.println(MILLI.toString(t, NANO.now(), 10_000_000));
 
 			System.out.println("А теперь скорость чтения СЛУЧАЙНЫХ чтений МНОГОПОТОЧНО 🚀...");
-			t = MILLI.now();
-			val w = Waiter.of();
-			Loops.loop(10, ()->JThread.VT.execute(()->{
+			t = now();
+			val w = new CountDownLatch(10);
+			val failure = new AtomicReference<Throwable>();
+			loop(10, ()->execute(()->{
 					try {
 						for (int n = 0; n < 10_000_000; ){
 							int i = ThreadLocalRandom.current().nextInt(0, 10_000_000);
@@ -121,14 +125,17 @@ public class RocksDBTest {
 							if (++n % 100_000 == 0)
 								System.out.println(n);
 						}
-						w.resume();
+						w.countDown();
 					} catch (Throwable e){
-						w.fail(e);
+						w.countDown();
+						failure.set(e);
 					}
 				}));
-			w.await(999_000, 10);
-			System.out.println(MILLI.toString(t, NANO.now(), 10_000_000));
-			System.out.println(MILLI.toString(t, NANO.now(), 100_000_000));
+			boolean done = w.await(999, TimeUnit.SECONDS);
+			assertTrue(done);
+			if (failure.get() != null){ throw failure.get(); }
+			System.out.println(perfToString(t, now(), 10_000_000));
+			System.out.println(perfToString(t, now(), 100_000_000));
 
 		} catch (RocksDBException e){
 			e.printStackTrace();

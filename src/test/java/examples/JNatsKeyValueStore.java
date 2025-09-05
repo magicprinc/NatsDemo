@@ -1,4 +1,4 @@
-package com.devinotele.common.nats.component;
+package examples;
 
 import io.nats.client.Connection;
 import io.nats.client.JetStreamApiException;
@@ -14,12 +14,6 @@ import io.nats.client.api.StorageType;
 import io.nats.client.api.StreamConfiguration;
 import lombok.extern.slf4j.Slf4j;
 import lombok.val;
-import org.jooq.lambda.JCore;
-import org.jooq.lambda.Loops;
-import org.jooq.lambda.MILLI;
-import org.jooq.lambda.NANO;
-import org.jooq.lambda.concurrent.JThread;
-import org.jooq.lambda.test.Waiter;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -30,8 +24,16 @@ import org.testcontainers.utility.DockerImageName;
 
 import java.io.IOException;
 import java.time.Duration;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import static examples.MagicUtils.close;
+import static examples.MagicUtils.execute;
+import static examples.MagicUtils.loop;
+import static examples.MagicUtils.now;
+import static examples.MagicUtils.perfToString;
 import static java.nio.charset.StandardCharsets.*;
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -66,7 +68,7 @@ class JNatsKeyValueStore {
 
 	@AfterAll
 	static void tearDown () {
-		JCore.close(nc);
+		close(nc);
 	}
 
 	@Test
@@ -118,17 +120,17 @@ class JNatsKeyValueStore {
 		System.out.printf("%s %d -> %s\n", entry.getKey(), entry.getRevision(), entry.getValueAsString());
 
 		//1. Создадим 100 млн ключей
-		long t = MILLI.now();
+		long t = now();
 		for (int i = 0; i < 500_000; i++){
 			kv.put(Long.toString(7900_000_00_00L + i), Long.toString(7900_000_00_00L + i).repeat(7));
 			if (i % 10_000 == 9_999){
 				System.out.println(i);
 			}
 		}
-		System.out.println(MILLI.toString(t, NANO.now(), 500_000));
+		System.out.println(perfToString(t, now(), 500_000));
 
 		System.out.println("А теперь скорость чтения...");
-		t = MILLI.now();
+		t = now();
 		for (int i = 0; i < 500_000; i++){
 			var e = kv.get(Long.toString(7900_000_00_00L + i));
 			if (i % 10_000 == 9_999){
@@ -136,12 +138,12 @@ class JNatsKeyValueStore {
 			}
 			assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), e.getValueAsString());
 		}
-		System.out.println(MILLI.toString(t, NANO.now(), 500_000));
+		System.out.println(perfToString(t, now(), 500_000));
 	}
 
 	/// @see io.nats.client.impl.NatsKeyValue#_write
 	@Test
-	void benchmarkAsync () throws IOException, JetStreamApiException {
+	void benchmarkAsync () throws IOException, JetStreamApiException, InterruptedException {
 		System.out.println("===== com.devinotele.common.nats.component.JNatsKeyValueStore#benchmark =====");
 
 		var js = nc.jetStream();
@@ -155,31 +157,33 @@ class JNatsKeyValueStore {
 
 
 		//1. Создадим 100 млн ключей
-		long t = MILLI.now();
+		long t = now();
 		for (int i = 0; i < 500_000; ){
 			String key = "$KV.benchmarkAsync."+ (7900_000_00_00L + i);
 			js.publishAsync(key, Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1));
 			if (++i % 10_000 == 0)
 					System.out.println(i);
 		}
-		System.out.println(MILLI.toString(t, NANO.now(), 500_000));
+		System.out.println(perfToString(t, now(), 500_000));
 
-		val w = Waiter.of();
-		t = MILLI.now();
-		Loops.loop(10, ()->JThread.VT.execute(()->{
+		val w = new CountDownLatch(10);
+		val counter = new AtomicInteger();
+		t = now();
+		loop(10, ()->execute(()->{
 				for (int n = 0; n < 500_000; ){
 					int i = ThreadLocalRandom.current().nextInt(0, 500_000);
 					String key = "$KV.benchmarkAsync." + ( 7900_000_00_00L + i );
 					js.publishAsync(key, Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1));
-					w.counter.incrementAndGet();
+					counter.incrementAndGet();
 					if (++n % 10_000 == 0)
 							System.out.println(n);
 				}
-				w.resume();
+				w.countDown();
 			}));
-		w.await(999_000, 10);
-		System.out.println(MILLI.toString(t, NANO.now(), 5_000_000));
-		assertEquals(5_000_000, w.counter.get());
+		boolean done = w.await(999, TimeUnit.SECONDS);
+		assertTrue(done);
+		System.out.println(perfToString(t, now(), 5_000_000));
+		assertEquals(5_000_000, counter.get());
 
 // https://github.com/nats-io/nats.go/discussions/1507#discussioncomment-14306747
 // надо разрешить в JetStream только 1 элемент ⇒ это и будет value же...

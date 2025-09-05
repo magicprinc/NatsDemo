@@ -1,4 +1,4 @@
-package com.devinotele.common.nats.component;
+package examples;
 
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
@@ -9,10 +9,6 @@ import org.apache.ignite.configuration.DataStorageConfiguration;
 import org.apache.ignite.configuration.IgniteConfiguration;
 import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
 import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-import org.jooq.lambda.MILLI;
-import org.jooq.lambda.NANO;
-import org.jooq.lambda.conf.JProperties;
-import org.jooq.lambda.util.JIO;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -22,7 +18,7 @@ import java.util.List;
 
 //@Testcontainers
 //@TestInstance(TestInstance.Lifecycle.PER_CLASS)
-public class IgniteClusterPerformanceTest {
+public class IgniteEmbeddedClusterPerformanceTest {
 
 	private static Ignite ignite;
 	private static IgniteCache<String, String> cache;

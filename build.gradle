@@ -12,10 +12,6 @@ repositories {
 	mavenCentral {
 		mavenContent { releasesOnly() }
 	}
-	maven {
-		url = "https://mvn.platform-s.com/repository/internal" // our repo is very slow, use it for our dependencies only
-		mavenContent { releasesOnly() }
-	}
 	maven { url = 'https://jitpack.io' }
 	maven {
 		url = "https://repo1.maven.org/maven2/" // https://github.com/nats-io/nats.java#using-gradle
@@ -63,7 +59,7 @@ publishing {
 	}
 }
 tasks.withType(GenerateModuleMetadata).configureEach {
-	enabled = false // не генерировать Gradle-JSON-"убийцу"-POM, наш Jenkins его игнорит
+	enabled = false // no Gradle-JSON-vs-POM
 }
 
 test { //or: tasks.named('test'){ or: tasks.withType(Test).configureEach // https://docs.gradle.org/current/dsl/org.gradle.api.tasks.testing.Test.html
@@ -140,8 +136,6 @@ dependencies {
 
 	compileOnly libs.bundles.coreAnnotation
 	compileOnly libs.slf4jApi
-	implementation libs.commonUtils
-	implementation libs.commonData
 	implementation libs.guava, libs.commonsLang3, libs.micrometerCore
 	implementation libs.bundles.jackson
 
@@ -164,7 +158,6 @@ dependencies {
 }
 
 configurations.configureEach { // .implementation? https://tomgregory.com/how-to-exclude-gradle-dependencies/
-	// используем slf4j + logback ⇒ вырезаем конкурентов
 	exclude group: "commons-logging", module: "commons-logging"
 	exclude group: 'org.springframework', module: 'spring-jcl'
 	exclude group: "org.apache.logging.log4j", module: "log4j-api" // vertx,spring-boot-starter-logging тянут

@@ -1,4 +1,4 @@
-package com.devinotele.common.nats.component;
+package examples;
 
 import org.jooq.lambda.MILLI;
 import org.jooq.lambda.NANO;
