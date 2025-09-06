@@ -18,7 +18,6 @@ import static examples.MagicUtils.asLatin1;
 import static examples.MagicUtils.asStr;
 import static examples.MagicUtils.execute;
 import static examples.MagicUtils.loop;
-import static examples.MagicUtils.normPath;
 import static examples.MagicUtils.now;
 import static examples.MagicUtils.perfToString;
 import static java.nio.charset.StandardCharsets.*;
@@ -46,7 +45,7 @@ public class RocksDBTest {
 
 	@Test  @SneakyThrows
 	void benchmark () {
-		String dbPath = normPath(TEMP_DIR.toString());
+		String dbPath = TEMP_DIR;
 		System.out.println(dbPath);
 		val options = new Options()
 			.setCreateIfMissing(true)
@@ -110,7 +109,7 @@ public class RocksDBTest {
 //				if (++n % 100_000 == 0)
 //						System.out.println(n);
 //			}
-//			System.out.println(MILLI.toString(t, NANO.now(), 10_000_000));
+//			System.out.println(MILLI.toString(t, now(), 10_000_000));
 
 			System.out.println("А теперь скорость чтения СЛУЧАЙНЫХ чтений МНОГОПОТОЧНО 🚀...");
 			t = now();

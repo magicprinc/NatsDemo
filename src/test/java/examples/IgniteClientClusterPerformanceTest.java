@@ -1,20 +1,14 @@
 package examples;
 
-import org.apache.ignite.Ignite;
-import org.apache.ignite.IgniteCache;
+import lombok.val;
 import org.apache.ignite.Ignition;
-import org.apache.ignite.cluster.ClusterState;
-import org.apache.ignite.configuration.CacheConfiguration;
-import org.apache.ignite.configuration.DataStorageConfiguration;
-import org.apache.ignite.configuration.IgniteConfiguration;
-import org.apache.ignite.spi.discovery.tcp.TcpDiscoverySpi;
-import org.apache.ignite.spi.discovery.tcp.ipfinder.vm.TcpDiscoveryVmIpFinder;
-import org.jooq.lambda.MILLI;
-import org.jooq.lambda.NANO;
-import org.jooq.lambda.conf.JProperties;
-import org.jooq.lambda.util.JIO;
+import org.apache.ignite.client.ClientCache;
+import org.apache.ignite.client.ClientCacheConfiguration;
+import org.apache.ignite.client.IgniteClient;
+import org.apache.ignite.configuration.ClientConfiguration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.GenericContainer;
@@ -22,53 +16,41 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
-import java.util.List;
+import static examples.MagicUtils.close;
+import static examples.MagicUtils.now;
+import static examples.MagicUtils.perfToString;
+import static org.junit.jupiter.api.Assertions.*;
 
-/// /// https://hub.docker.com/r/apacheignite/ignite/
+/// https://hub.docker.com/r/apacheignite/ignite/
 @Testcontainers
 //@TestInstance(TestInstance.Lifecycle.PER_CLASS)
+@Disabled
 public class IgniteClientClusterPerformanceTest {
 	@Container
 	private static final GenericContainer<?> igniteContainer =
-		new GenericContainer<>(DockerImageName.parse("apacheignite/ignite:latest"))
-			.withExposedPorts(10800, 47100, 47500, 11211)
+		new GenericContainer<>(DockerImageName.parse("apacheignite/ignite:2.17.0"))
+			.withExposedPorts(10800, 47100, 11211,
+				47500, 47501, 47502, 47503, 47504, 47505, 47506, 47507, 47508, 47509)
+			.withEnv("IGNITE_QUIET", "false") // Optional: Enable logs to see startup issues
 			;
 
-	private static Ignite ignite;
-	private static IgniteCache<String, String> cache;
+	static IgniteClient ignite;
+	static ClientCache<String, String> cache;
+	static String containerHost;
+	static int containerPort;
 
 	@BeforeAll
-	static void setupCluster() {
-		IgniteConfiguration cfg = new IgniteConfiguration();
-		cfg.setIgniteInstanceName("string-cache-test");
+	static void setupCluster () {
+		containerHost = igniteContainer.getHost();
+		containerPort = igniteContainer.getMappedPort(10800);
 
-//		cfg.setWorkDirectory(null); // Disable persistence for better performance
+		System.out.println("👉 Connect to Ignite Cluster: " + containerHost + ":" + containerPort);
+		val clientConfig = new ClientConfiguration()
+			.setAddresses(containerHost + ":" + containerPort);
 
-		String dbPath = JIO.normPath(JProperties.TEMP_DIR.toString());
-		System.out.println(dbPath);
+		ignite = Ignition.startClient(clientConfig);
 
-		cfg.setWorkDirectory(dbPath); // Or another path
-		DataStorageConfiguration storageCfg = new DataStorageConfiguration();
-		storageCfg.setStoragePath("ignitedb/storage");
-		storageCfg.setWalPath("ignitedb/wal");
-		storageCfg.setWalArchivePath("ignitedb/wal/archive");
-
-// Enable persistence for the default data region
-		storageCfg.getDefaultDataRegionConfiguration().setPersistenceEnabled(true);
-
-		cfg.setDataStorageConfiguration(storageCfg);
-
-		TcpDiscoverySpi discoverySpi = new TcpDiscoverySpi();
-		TcpDiscoveryVmIpFinder ipFinder = new TcpDiscoveryVmIpFinder();
-		ipFinder.setAddresses(List.of("127.0.0.1:47500"));
-		discoverySpi.setIpFinder(ipFinder);
-		cfg.setDiscoverySpi(discoverySpi);
-
-		ignite = Ignition.start(cfg);
-		ignite.cluster().state(ClusterState.ACTIVE);
-
-		// Create cache with optimized configuration
-		CacheConfiguration<String, String> cacheCfg = new CacheConfiguration<>();
+		val cacheCfg = new ClientCacheConfiguration();
 		cacheCfg.setName("string-performance-cache");
 		cacheCfg.setBackups(0); // No backups for maximum performance
 		cacheCfg.setStatisticsEnabled(false); // Disable stats for performance
@@ -77,34 +59,35 @@ public class IgniteClientClusterPerformanceTest {
 	}
 
 	@AfterAll
-	static void tearDownCluster() {
-		if (ignite != null) {
-			ignite.close();
-		}
+	static void tearDownCluster () {
+		close(ignite);
+		close(igniteContainer);
 	}
 
 	@Test
-	@DisplayName("Single-node put performance")
-	void testSingleNodePutPerformance() {
-
-		long t = MILLI.now();
-		for (int i = 0; i < 1_000_000; i++){
-			cache.put(Long.toString(7900_000_00_00L + i), Long.toString(7900_000_00_00L + i).repeat(7));
-			if (i % 10_000 == 9_999){
-				System.out.println(i);
-			}
-		}
-		System.out.printf("Запись ____%s%n", MILLI.toString(t, NANO.now(), 1_000_000));
-
-		t = MILLI.now();
-		for (int i = 0; i < 1_000_000; i++){
-			var e = cache.get(Long.toString(7900_000_00_00L + (int) (Math.random() * 1_000_000)));
-			if (i % 10_000 == 9_999){
-				System.out.println(i);
-			}
-		}
-		System.out.printf("Чтение случайное ____%s%n", MILLI.toString(t, NANO.now(), 1_000_000));
-
+	public void testCacheOperations() {
+		var cache = ignite.getOrCreateCache("foo");
+		cache.put("key1", "value1");
+		assertEquals("value1", cache.get("key1"));
 	}
 
+	@Test @DisplayName("Single-node put performance")
+	void testSingleNodePutPerformance () {
+		System.out.println("===== Apache Ignite Cluster - testSingleNodePutPerformance ====");
+		long t = now();
+		for (int i = 0; i < 1_000_000; ){
+			cache.put(Long.toString(7900_000_00_00L + i), Long.toString(7900_000_00_00L + i).repeat(7));
+			if (++i % 10_000 == 0)
+					System.out.println(i);
+		}
+		System.out.printf("Write ____%s%n", perfToString(t, now(), 1_000_000));
+
+		t = now();
+		for (int i = 0; i < 1_000_000; ){
+			var e = cache.get(Long.toString(7900_000_00_00L + (int) (Math.random() * 1_000_000)));
+			if (++i % 10_000 == 0)
+					System.out.println(i);
+		}
+		System.out.printf("Random reads ____%s%n", perfToString(t, now(), 1_000_000));
+	}
 }

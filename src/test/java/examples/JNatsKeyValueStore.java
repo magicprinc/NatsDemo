@@ -196,6 +196,6 @@ class JNatsKeyValueStore {
 //			}
 //			assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), e.getValueAsString());
 //		}
-//		System.out.println(MILLI.toString(t, NANO.now(), 500_000));
+//		System.out.println(MILLI.toString(t, now(), 500_000));
 	}
 }

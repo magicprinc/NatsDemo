@@ -4,7 +4,6 @@ import jakarta.validation.constraints.PositiveOrZero;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 
-import java.nio.file.Path;
 import java.util.HexFormat;
 import java.util.Locale;
 import java.util.function.IntPredicate;
@@ -19,7 +18,7 @@ public final class MagicUtils {
 	public static final long FIRST_ACCESS_NANOS  = System.nanoTime();
 	public static final long FIRST_ACCESS_MILLIS = System.currentTimeMillis();
 
-	public static final Path TEMP_DIR = Path.of(normPath(System.getProperty("java.io.tmpdir")));
+	public static final String TEMP_DIR = normPath(System.getProperty("java.io.tmpdir"));
 
 	public static @PositiveOrZero long now () {
 		return (System.nanoTime() - FIRST_ACCESS_NANOS) / NANO_IN_MILLI;// == toMilli

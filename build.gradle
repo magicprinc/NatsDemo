@@ -155,6 +155,7 @@ dependencies {
 	testRuntimeOnly libs.bundles.junitRuntime
 	testImplementation libs.testcontainers.junit
 	testImplementation libs.rocksdb
+	testImplementation libs.jdbc.sqlite
 }
 
 configurations.configureEach { // .implementation? https://tomgregory.com/how-to-exclude-gradle-dependencies/

@@ -16,10 +16,14 @@ import org.junit.jupiter.api.Test;
 
 import java.util.List;
 
+import static examples.MagicUtils.TEMP_DIR;
+import static examples.MagicUtils.close;
+import static examples.MagicUtils.now;
+import static examples.MagicUtils.perfToString;
+
 //@Testcontainers
 //@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IgniteEmbeddedClusterPerformanceTest {
-
 	private static Ignite ignite;
 	private static IgniteCache<String, String> cache;
 
@@ -27,19 +31,17 @@ public class IgniteEmbeddedClusterPerformanceTest {
 	static void setupCluster() {
 		IgniteConfiguration cfg = new IgniteConfiguration();
 		cfg.setIgniteInstanceName("string-cache-test");
+		// cfg.setWorkDirectory(null); // Disable persistence for better performance
 
-//		cfg.setWorkDirectory(null); // Disable persistence for better performance
+		System.out.println(TEMP_DIR);
 
-		String dbPath = JIO.normPath(JProperties.TEMP_DIR.toString());
-		System.out.println(dbPath);
-
-		cfg.setWorkDirectory(dbPath); // Or another path
+		cfg.setWorkDirectory(TEMP_DIR);// Or another path
 		DataStorageConfiguration storageCfg = new DataStorageConfiguration();
 		storageCfg.setStoragePath("ignitedb/storage");
 		storageCfg.setWalPath("ignitedb/wal");
 		storageCfg.setWalArchivePath("ignitedb/wal/archive");
 
-// Enable persistence for the default data region
+		// Enable persistence for the default data region
 		storageCfg.getDefaultDataRegionConfiguration().setPersistenceEnabled(true);
 
 		cfg.setDataStorageConfiguration(storageCfg);
@@ -63,34 +65,27 @@ public class IgniteEmbeddedClusterPerformanceTest {
 	}
 
 	@AfterAll
-	static void tearDownCluster() {
-		if (ignite != null) {
-			ignite.close();
-		}
+	static void tearDownCluster () {
+		close(ignite);
 	}
 
-	@Test
-	@DisplayName("Single-node put performance")
+	@Test  @DisplayName("Single-node put performance")
 	void testSingleNodePutPerformance() {
-
-		long t = MILLI.now();
+		long t = now();
 		for (int i = 0; i < 1_000_000; i++){
 			cache.put(Long.toString(7900_000_00_00L + i), Long.toString(7900_000_00_00L + i).repeat(7));
 			if (i % 10_000 == 9_999){
 				System.out.println(i);
 			}
 		}
-		System.out.printf("Запись ____%s%n", MILLI.toString(t, NANO.now(), 1_000_000));
+		System.out.printf("Запись ____%s%n", perfToString(t, now(), 1_000_000));
 
-		t = MILLI.now();
-		for (int i = 0; i < 1_000_000; i++){
+		t = now();
+		for (int i = 0; i < 1_000_000; ){
 			var e = cache.get(Long.toString(7900_000_00_00L + (int) (Math.random() * 1_000_000)));
-			if (i % 10_000 == 9_999){
-				System.out.println(i);
-			}
+			if (++i % 10_000 == 0)
+					System.out.println(i);
 		}
-		System.out.printf("Чтение случайное ____%s%n", MILLI.toString(t, NANO.now(), 1_000_000));
-
+		System.out.printf("Чтение случайное ____%s%n", perfToString(t, now(), 1_000_000));
 	}
-
 }
