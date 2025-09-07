@@ -188,7 +188,7 @@ class JNatsKeyValueStore {
 // https://github.com/nats-io/nats.go/discussions/1507#discussioncomment-14306747
 // надо разрешить в JetStream только 1 элемент ⇒ это и будет value же...
 //		System.out.println("А теперь скорость чтения...");
-//		t = MILLI.now();
+//		t = now();
 //		for (int i = 0; i < 500_000; i++){
 //			var e = kv.get(Long.toString(7900_000_00_00L + i));
 //			if (i % 10_000 == 9_999){

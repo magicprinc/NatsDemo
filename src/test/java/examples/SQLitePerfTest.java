@@ -37,7 +37,7 @@ public class SQLitePerfTest {
 	static final int MAX = 5_000_000;
 
 	@Test  @SneakyThrows
-	void singleThread () {
+	void benchmark () {
 		SQLiteConnection con = null;
 		try {
 			val dataSource = new SQLiteDataSource();// create a database connection
@@ -66,7 +66,8 @@ public class SQLitePerfTest {
 			psRead.setMaxRows(1);
 			con.setAutoCommit(false);//BEGIN TRAN
 
-			System.out.println("SQLite single thread BATCH 5k insert...");
+
+			System.out.println("1️⃣ SQLite single thread BATCH 5k insert...");
 			long t = now();
 			for (int i = 0; i < MAX; ){
 				psInsert.setString(1, Long.toString(7900_000_00_00L + i));
@@ -80,7 +81,8 @@ public class SQLitePerfTest {
 
 			con.setAutoCommit(true);// commits tx
 
-			System.out.println("SQLite single thread random read...");
+
+			System.out.println("2️⃣ SQLite single thread random read...");
 			t = now();
 			for (int n = 0; n < MAX; ){
 				int i = ThreadLocalRandom.current().nextInt(0, MAX);
@@ -93,7 +95,8 @@ public class SQLitePerfTest {
 			}
 			System.out.println(perfToString(t, now(), MAX));
 
-			System.out.println("SQLite single thread BATCH (whole table) read...");
+
+			System.out.println("3️⃣ SQLite single thread BATCH (whole table) read (just for fun)...");
 			t = now();
 			val stRead = con.prepareStatement("select id, value from keyvalue order by id");
 			try (var rs = stRead.executeQuery()){
@@ -106,7 +109,8 @@ public class SQLitePerfTest {
 			}
 			System.out.println(perfToString(t, now(), MAX));
 
-			System.out.println("SQLite multi-thread random read...");
+
+			System.out.println("4️⃣ SQLite multi-thread random read...");
 			val bq = new LinkedBlockingQueue<>();
 			val _con = con;
 			t = now();

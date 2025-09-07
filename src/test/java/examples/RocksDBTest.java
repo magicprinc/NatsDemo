@@ -8,6 +8,7 @@ import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
 
+import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
@@ -15,7 +16,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 import static examples.MagicUtils.TEMP_DIR;
 import static examples.MagicUtils.asLatin1;
-import static examples.MagicUtils.asStr;
 import static examples.MagicUtils.execute;
 import static examples.MagicUtils.loop;
 import static examples.MagicUtils.now;
@@ -43,8 +43,10 @@ public class RocksDBTest {
 		RocksDB.loadLibrary();
 	}
 
+	static final int MAX = 5_000_000;
+
 	@Test  @SneakyThrows
-	void benchmark () {
+	void benchmark () throws RocksDBException {
 		String dbPath = TEMP_DIR;
 		System.out.println(dbPath);
 		val options = new Options()
@@ -67,62 +69,58 @@ public class RocksDBTest {
 //		options.setTableFormatConfig(tableConfig);
 
 		try (RocksDB db = RocksDB.open(options, dbPath)){
+			System.out.println("1️⃣ Create 10 mi keys");
 
-			// Put key-value
-			db.put("key1".getBytes(), "value1".getBytes());
-
-			// Get key-value
-			byte[] value = db.get("key1".getBytes());
-			System.out.println("Retrieved value: "+ ( value != null ? asStr(value) : "null" ));
-
-			// Delete key
-			db.delete("key1".getBytes());
-
-			//1. Создадим 100 млн ключей
 			long t = now();
-			for (int i = 0; i < 10_000_000; ){
+			for (int i = 0; i < MAX; ){
 				db.put(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1), Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1));
-				if (++i % 100_000 == 0){
-					System.out.println(i);
-				}
+				if (++i % 500_000 == 0) System.out.println(i);
 			}
-			System.out.println(perfToString(t, now(), 10_000_000));
+			System.out.println(perfToString(t, now(), MAX));
 
-			System.out.println("А теперь скорость чтения...");
+
+			System.out.println("2️⃣ Single thread sequential reads");
 			t = now();
-			for (int i = 0; i < 10_000_000; ){
+			for (int i = 0; i < MAX; ){
 				var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
 				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
-				if (++i % 100_000 == 0)
-						System.out.println(i);
+				if (++i % 100_000 == 0) System.out.println(i);
 			}
-			System.out.println(perfToString(t, now(), 10_000_000));
+			System.out.println(perfToString(t, now(), MAX));
 
 
-//			System.out.println("А теперь скорость чтения СЛУЧАЙНЫХ чтений...");
-//			t = MILLI.now();
-//			var r = ThreadLocalRandom.current();
-//			for (int n = 0; n < 10_000_000; ){
-//				int i = r.nextInt(0, 10_000_000);
-//				var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
-//				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
-//				if (++n % 100_000 == 0)
-//						System.out.println(n);
-//			}
-//			System.out.println(MILLI.toString(t, now(), 10_000_000));
+			System.out.println("3️⃣ Single thread random BATCH reads");
+			t = now();
+			val r = ThreadLocalRandom.current();
+			val req = new ArrayList<byte[]>(50);
+			for (int n = 0; n < MAX; ){
+				req.clear();
+				for (int j = 0; j < 50 && n < MAX; j++, n++){
+					if (n % 100_000 == 0) System.out.println(n);
+					int i = r.nextInt(0, MAX);
+					req.add(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
+				}
+				var e = db.multiGetAsList(req);// 🚀
+				assertEquals(e.size(), req.size());
 
-			System.out.println("А теперь скорость чтения СЛУЧАЙНЫХ чтений МНОГОПОТОЧНО 🚀...");
+				for (int j = 0; j < req.size(); j++){
+					assertEquals(asLatin1(req.get(j)).repeat(7), asLatin1(e.get(j)));
+				}
+			}
+			System.out.println(perfToString(t, now(), MAX));
+
+
+			System.out.println("4️⃣ Multi threads random reads 🚀...");
 			t = now();
 			val w = new CountDownLatch(10);
 			val failure = new AtomicReference<Throwable>();
 			loop(10, ()->execute(()->{
 					try {
-						for (int n = 0; n < 10_000_000; ){
-							int i = ThreadLocalRandom.current().nextInt(0, 10_000_000);
+						for (int n = 0; n < MAX; ){
+							int i = ThreadLocalRandom.current().nextInt(0, MAX);
 							var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
 							assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
-							if (++n % 100_000 == 0)
-								System.out.println(n);
+							if (++n % 100_000 == 0) System.out.println(n);
 						}
 						w.countDown();
 					} catch (Throwable e){
@@ -130,14 +128,11 @@ public class RocksDBTest {
 						failure.set(e);
 					}
 				}));
-			boolean done = w.await(999, TimeUnit.SECONDS);
+			boolean done = w.await(15, TimeUnit.MINUTES);
 			assertTrue(done);
-			if (failure.get() != null){ throw failure.get(); }
-			System.out.println(perfToString(t, now(), 10_000_000));
-			System.out.println(perfToString(t, now(), 100_000_000));
-
-		} catch (RocksDBException e){
-			e.printStackTrace();
+			if (failure.get() != null) throw failure.get();
+			System.out.println(perfToString(t, now(), MAX));
+			System.out.println(perfToString(t, now(), MAX*10));
 		}
 	}
 }
