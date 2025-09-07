@@ -255,7 +255,6 @@ jbossLogging = { module = "org.jboss.logging:jboss-logging", version="latest.rel
 
 #todo SmallRye Fault Tolerance + Mutiny ? Vert.x CircuitBreaker ? Guava RateLimiter/commons-lang CircuitBreaker ? bucket4j
 
-# https://jira.platform-s.com/browse/PLAT-1618 → https://smallrye.io/docs/smallrye-fault-tolerance/6.2.6/ ➕ https://github.com/smallrye/smallrye-fault-tolerance
 faultTolerance = { module = "io.smallrye:smallrye-fault-tolerance-standalone", version="latest.release" }
 faultToleranceVertx = { module = "io.smallrye:smallrye-fault-tolerance-vertx", version="latest.release" }
 # io.smallrye:smallrye-fault-tolerance-mutiny + org.reactivestreams:reactive-streams:1.+

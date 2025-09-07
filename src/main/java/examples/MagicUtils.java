@@ -1,11 +1,17 @@
 package examples;
 
+import com.google.common.util.concurrent.Futures;
 import jakarta.validation.constraints.PositiveOrZero;
+import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.jspecify.annotations.Nullable;
 
+import java.lang.reflect.UndeclaredThrowableException;
 import java.util.HexFormat;
 import java.util.Locale;
+import java.util.concurrent.CompletionException;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.function.IntPredicate;
 
 import static java.nio.charset.StandardCharsets.*;
@@ -165,4 +171,26 @@ public final class MagicUtils {
 			: s.subSequence(0, i+1).toString();
 	}
 
+	@SuppressWarnings("unchecked")
+	public static <T> Future<T> await (@Nullable Future<T> future) {
+		if (future == null){
+			return (Future<T>) Futures.immediateVoidFuture();// null → completed Future<null>
+		} else if (future.isDone() || future.isCancelled()){
+			return future;
+		}
+		try {
+			future.get();
+		} catch (Throwable ignore){}
+		return future;
+	}
+
+	@SneakyThrows
+	public static <T> @Nullable T get (@Nullable Future<T> future) {
+		if (future == null){ return null; }
+		try {
+			return future.get();// блочимся; throws
+		} catch (ExecutionException | CompletionException | UndeclaredThrowableException e){
+			throw e.getCause() != null ? e.getCause() : e;
+		}
+	}
 }

@@ -1,6 +1,7 @@
 package examples;
 
 import lombok.Cleanup;
+import lombok.val;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.DisplayName;
@@ -22,12 +23,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
 import static examples.MagicUtils.close;
 import static examples.MagicUtils.now;
 import static examples.MagicUtils.perfToString;
 import static java.nio.charset.StandardCharsets.*;
+import static org.junit.jupiter.api.Assertions.*;
 
 @Testcontainers
 @TestInstance(TestInstance.Lifecycle.PER_CLASS)
@@ -76,15 +79,26 @@ public class RedisTest {
 		close(redisContainer);
 	}
 
-	@Test  @DisplayName("Single-threaded write performance test")
+	static final int MAX = 500_000;
+
+	@Test  @DisplayName("Single-threaded write/read performance test")
 	void testSingleThreadedWritePerformance() {
 		long t = now();
-		for (int i = 0; i < 100_000; ){
+		for (int i = 0; i < MAX; ){
 			jedis.set(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1), Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1));
-			if (i++ % 10_000 == 0)
-					System.out.println(i);
+			if (++i % 10_000 == 0) System.out.println(i);
 		}
-		System.out.println(perfToString(t, now(), 100_000));
+		System.out.println(perfToString(t, now(), MAX));
+
+		t = now();
+		val r = ThreadLocalRandom.current();
+		for (int n = 0; n < MAX; ){
+			int i = r.nextInt(0, MAX);
+			var e = jedis.get(Long.toString(7900_000_00_00L + i));
+			if (++n % 20_000 == 0) System.out.println(n);
+			assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), e);
+		}
+		System.out.println(perfToString(t, now(), MAX));
 	}
 
 	@Test  @DisplayName("Multithreaded write performance test")
