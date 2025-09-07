@@ -22,7 +22,7 @@ The underscore (_) is a thousand separator.
 | 3️⃣ Single thread random BATCH reads | 102_022 |
 | 4️⃣ Multi threads random reads | 171_010 |
 
-### NATS
+### NATS in Docker
 | Operation                  |    op/s |
 |:---------------------------|--------:|
 | Single-Thread create keys  |   2_774 |
@@ -31,7 +31,16 @@ The underscore (_) is a thousand separator.
 | Async publish and wait     | 119_846 |
 | Multi thread random reads  |  19_218 |
 
-### Redis
+### NATS without Docker (host OS)
+| Operation                  |    op/s |
+|:---------------------------|--------:|
+| Single-Thread create keys  |  14_468 |
+| Single thread random reads |  15_152 |
+| Async publish no wait      | 269_978 |
+| Async publish and wait     | 155_715 |
+| Multi thread random reads  |  86_334 |
+
+### Redis in Docker
 | Operation                  |  op/s |
 |:---------------------------|------:|
 | Single-Thread create keys  | 3_858 |
