@@ -5,7 +5,7 @@
 All numbers are operations per second (op/s).
 The underscore (_) is a thousand separator.
 
-### SQLite
+### SQLite (local library: no network)
 | Operation                 |      op/s |
 |:--------------------------|----------:|
 | batch insert              |   441_345 |
@@ -13,7 +13,7 @@ The underscore (_) is a thousand separator.
 | select table              | 1_108_156 |
 | multi thread random read  |    58_665 |
 
-### RocksDB
+### RocksDB (local library: no network)
 | Operation                            |    op/s |
 |:-------------------------------------|--------:|
 | 1️⃣ Create 10 mi keys                | 233_459 |
@@ -35,3 +35,9 @@ The underscore (_) is a thousand separator.
 |:---------------------------|------:|
 | Single-Thread create keys  | 3_858 |
 | Single thread random reads | 3_884 |
+
+### Apache Ignite (Embedded)
+| Operation                  |    op/s |
+|:---------------------------|--------:|
+| Single-Thread create keys  | 177_147 |
+| Single thread random reads | 409_668 |

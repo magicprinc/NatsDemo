@@ -1,5 +1,6 @@
 package examples;
 
+import lombok.val;
 import org.apache.ignite.Ignite;
 import org.apache.ignite.IgniteCache;
 import org.apache.ignite.Ignition;
@@ -15,12 +16,16 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
+import java.util.concurrent.ThreadLocalRandom;
 
 import static examples.MagicUtils.TEMP_DIR;
 import static examples.MagicUtils.close;
 import static examples.MagicUtils.now;
 import static examples.MagicUtils.perfToString;
+import static org.junit.jupiter.api.Assertions.*;
 
+/// https://ignite.apache.org/docs/ignite2/latest/
+/// use vm.options
 //@Testcontainers
 //@TestInstance(TestInstance.Lifecycle.PER_CLASS)
 public class IgniteEmbeddedClusterPerformanceTest {
@@ -36,7 +41,7 @@ public class IgniteEmbeddedClusterPerformanceTest {
 		System.out.println(TEMP_DIR);
 
 		cfg.setWorkDirectory(TEMP_DIR);// Or another path
-		DataStorageConfiguration storageCfg = new DataStorageConfiguration();
+		val storageCfg = new DataStorageConfiguration();
 		storageCfg.setStoragePath("ignitedb/storage");
 		storageCfg.setWalPath("ignitedb/wal");
 		storageCfg.setWalArchivePath("ignitedb/wal/archive");
@@ -69,23 +74,26 @@ public class IgniteEmbeddedClusterPerformanceTest {
 		close(ignite);
 	}
 
+	static final int MAX = 1_000_000;
+
 	@Test  @DisplayName("Single-node put performance")
 	void testSingleNodePutPerformance() {
 		long t = now();
-		for (int i = 0; i < 1_000_000; i++){
+		for (int i = 0; i < MAX; ){
 			cache.put(Long.toString(7900_000_00_00L + i), Long.toString(7900_000_00_00L + i).repeat(7));
-			if (i % 10_000 == 9_999){
-				System.out.println(i);
-			}
+			if (++i % 10_000 == 9_999) System.out.println(i);
 		}
-		System.out.printf("Запись ____%s%n", perfToString(t, now(), 1_000_000));
+		System.out.printf("Write ____%s%n", perfToString(t, now(), MAX));
 
 		t = now();
-		for (int i = 0; i < 1_000_000; ){
-			var e = cache.get(Long.toString(7900_000_00_00L + (int) (Math.random() * 1_000_000)));
-			if (++i % 10_000 == 0)
-					System.out.println(i);
+		val r = ThreadLocalRandom.current();
+		for (int n = 0; n < MAX; ){
+			var key = Long.toString(7900_000_00_00L + r.nextInt(MAX));
+			var e = cache.get(key);
+			if (++n % 10_000 == 0)
+					System.out.println(n);
+			assertEquals(key.repeat(7), e);
 		}
-		System.out.printf("Чтение случайное ____%s%n", perfToString(t, now(), 1_000_000));
+		System.out.printf("Read random ____%s%n", perfToString(t, now(), MAX));
 	}
 }
