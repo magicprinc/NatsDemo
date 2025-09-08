@@ -38,7 +38,7 @@ The underscore (_) is a thousand separator.
 | Single thread random reads |  15_152 |
 | Async publish no wait      | 269_978 |
 | Async publish and wait     | 155_715 |
-| Multi thread random reads  |  86_334 |
+| Multi thread random reads  |  89_009 |
 
 ### Redis in Docker
 | Operation                  |  op/s |
