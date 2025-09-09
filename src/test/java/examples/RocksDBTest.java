@@ -7,6 +7,8 @@ import org.rocksdb.CompressionType;
 import org.rocksdb.Options;
 import org.rocksdb.RocksDB;
 import org.rocksdb.RocksDBException;
+import org.rocksdb.WriteBatch;
+import org.rocksdb.WriteOptions;
 
 import java.util.ArrayList;
 import java.util.concurrent.CountDownLatch;
@@ -133,6 +135,50 @@ public class RocksDBTest {
 			if (failure.get() != null) throw failure.get();
 			System.out.println(perfToString(t, now(), MAX));
 			System.out.println(perfToString(t, now(), MAX*10));
+		}
+	}
+
+	@Test  @SneakyThrows // op/s=1_472_320
+	void benchmarkBatchWrite () throws RocksDBException {
+		String dbPath = TEMP_DIR;
+		System.out.println(dbPath);
+		val options = new Options()
+			.setCreateIfMissing(true)
+			//.setMaxBackgroundJobs(Runtime.getRuntime().availableProcessors())// def 2
+			.setMaxBackgroundJobs(Runtime.getRuntime().availableProcessors() * 3)
+			//.setWriteBufferSize(128 * 1024 * 1024) // def 64MB memtable
+			.setWriteBufferSize(128 * 1024 * 1024)
+			//.setCompactionStyle(CompactionStyle.LEVEL) // compaction_style: Level compaction (default) or Universal; Universal is sometimes faster for write-heavy workloads.
+			.setCompressionType(CompressionType.ZSTD_COMPRESSION)
+			.setUseFsync(false)// use_fsync: true for stronger durability guarantees (makes writes hit disk): If false, then every store to stable storage will issue a fdatasync. This parameter should be set to true while storing data to filesystem like ext3 that can lose files after a reboot.
+			//.setMergeOperator(new UInt64AddOperator() / StringAppendOperator) нельзя написать свой на Java 🤷‍♀️
+			.setMaxWriteBufferNumber(6)
+			;
+
+		try (RocksDB db = RocksDB.open(options, dbPath)){
+			System.out.println("1️⃣ Create 10 mi keys");
+
+			long t = now();
+			for (int i = 0; i < MAX; ){
+				val batch = new WriteBatch();
+				for (int j = 0; j < 5000; j++, i++){
+					batch.put(
+						Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1),
+						Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1)
+					);
+					if (i % 500_000 == 0) System.out.println(i);
+				}
+				db.write(new WriteOptions(), batch);
+				batch.close();
+			}
+			System.out.println(perfToString(t, now(), MAX));
+
+			// verify all keys
+			for (int i = 0; i < MAX; ){
+				var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
+				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
+				if (++i % 100_000 == 0) System.out.println(i);
+			}
 		}
 	}
 }

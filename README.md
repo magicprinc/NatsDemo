@@ -15,12 +15,13 @@ The underscore (_) is a thousand separator.
 | multi thread random read  |    58_665 |
 
 ### RocksDB (local library: no network)
-| Operation                            |    op/s |
-|:-------------------------------------|--------:|
-| 1️⃣ Create 10 mi keys                | 233_459 |
-| 2️⃣ Single thread sequential reads   | 544_781 |
-| 3️⃣ Single thread random BATCH reads | 102_022 |
-| 4️⃣ Multi threads random reads | 171_010 |
+| Operation                        |    op/s |
+|:---------------------------------|--------:|
+| Create 10 mi keys                | 233_459 |
+| Create 10 mi keys Batch 5k       | 1_472_320 |
+| Single thread sequential reads   | 544_781 |
+| Single thread random BATCH reads | 102_022 |
+| Multi threads random reads       | 171_010 |
 
 ### NATS in Docker
 | Operation                  |    op/s |
