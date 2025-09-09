@@ -6,6 +6,8 @@ https://github.com/nats-io/nats.go/discussions/1507#discussioncomment-14312986
 All numbers are operations per second (op/s).
 The underscore (_) is a thousand separator.
 
+SSD. Windows 10 22H2. 16 CPU. 32GB. Java 24.0.2
+
 ### SQLite (local library: no network)
 | Operation                 |      op/s |
 |:--------------------------|----------:|
@@ -15,6 +17,8 @@ The underscore (_) is a thousand separator.
 | multi thread random read  |    58_665 |
 
 ### RocksDB (local library: no network)
+https://github.com/facebook/rocksdb/issues/13931
+
 | Operation                        |    op/s |
 |:---------------------------------|--------:|
 | Create 10 mi keys                | 233_459 |
