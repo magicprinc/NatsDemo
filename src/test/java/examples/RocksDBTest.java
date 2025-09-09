@@ -1,6 +1,7 @@
 package examples;
 
 import lombok.SneakyThrows;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.junit.jupiter.api.Test;
 import org.rocksdb.CompressionType;
@@ -38,14 +39,13 @@ import static org.junit.jupiter.api.Assertions.*;
 /// ttl (один на всю БД) задаётся в момент открытия БД
 ///
 /// Открыть ту же самую БД можно только для чтения (так делают backup replica)
-///
-/// SQLite?
+@Slf4j
 public class RocksDBTest {
 	static {
 		RocksDB.loadLibrary();
 	}
 
-	static final int MAX = 5_000_000;
+	static final int MAX = 10_000_000;
 
 	@Test  @SneakyThrows
 	void benchmark () throws RocksDBException {
@@ -140,8 +140,6 @@ public class RocksDBTest {
 
 	@Test  @SneakyThrows // op/s=1_472_320
 	void benchmarkBatchWrite () throws RocksDBException {
-		String dbPath = TEMP_DIR;
-		System.out.println(dbPath);
 		val options = new Options()
 			.setCreateIfMissing(true)
 			//.setMaxBackgroundJobs(Runtime.getRuntime().availableProcessors())// def 2
@@ -155,7 +153,7 @@ public class RocksDBTest {
 			.setMaxWriteBufferNumber(6)
 			;
 
-		try (RocksDB db = RocksDB.open(options, dbPath)){
+		try (RocksDB db = RocksDB.open(options, TEMP_DIR)){
 			System.out.println("1️⃣ Create 10 mi keys");
 
 			long t = now();
@@ -179,6 +177,47 @@ public class RocksDBTest {
 				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
 				if (++i % 100_000 == 0) System.out.println(i);
 			}
+		}
+	}
+
+	/// https://github.com/facebook/rocksdb/issues/13931
+	@Test
+	void testConcurrentPut () throws RocksDBException {
+		val options = new Options()
+			.setCreateIfMissing(true)
+			.setMaxBackgroundJobs(Runtime.getRuntime().availableProcessors() * 3)
+			.setWriteBufferSize(128 * 1024 * 1024)
+			.setCompressionType(CompressionType.ZSTD_COMPRESSION)
+			.setUseFsync(false)
+			.setMaxWriteBufferNumber(6);
+
+		try (RocksDB db = RocksDB.open(options, TEMP_DIR)){
+			System.out.println("1️⃣ Create 10 mi keys");
+
+			long t = now();
+			for (int i = 0; i < MAX; ){
+				for (int j = 0; j < 5000; j++, i++){
+					byte[] key = Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1);
+					byte[] value = Long.toString(7900_000_00_00L + i).repeat(7).getBytes(ISO_8859_1);
+					Thread.startVirtualThread(()->putter(db,key,value));// 5000 concurrent threads
+					if (i % 500_000 == 0) System.out.println(i);
+				}
+			}
+			System.out.println(perfToString(t, now(), MAX));// 2647ms, op/s = 1_888_931
+
+			// verify all keys
+			for (int i = 0; i < MAX; ){
+				var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
+				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
+				if (++i % 100_000 == 0) System.out.println(i);
+			}
+		}
+	}
+	static void putter (RocksDB db, byte[] key, byte[] value) {
+		try {
+			db.put(key, value);
+		} catch (Throwable e){// RocksDBException
+			log.error("db.put failed for {} = {}", asLatin1(key), asLatin1(value), e);
 		}
 	}
 }
