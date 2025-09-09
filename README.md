@@ -19,9 +19,10 @@ The underscore (_) is a thousand separator.
 |:---------------------------------|--------:|
 | Create 10 mi keys                | 233_459 |
 | Create 10 mi keys Batch 5k       | 1_472_320 |
+| Create 10 mi keys Multi thread   | 1_888_931 |
 | Single thread sequential reads   | 544_781 |
 | Single thread random BATCH reads | 102_022 |
-| Multi threads random reads       | 171_010 |
+| Multi thread random reads        | 171_010 |
 
 ### NATS in Docker
 | Operation                  |    op/s |

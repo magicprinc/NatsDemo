@@ -33,12 +33,16 @@ import static org.junit.jupiter.api.Assertions.*;
 ///
 /// todo see Ignite3 rocksDB settings!
 ///
-/// есть pessimistic locking (для высокой конкуренции) и optimistic locking (CAS)
-/// key < 8M, value <3G, ANY bytes!
+/// 😥 pessimistic locking (for high concurrency) -and- 😀 optimistic locking (CAS)
+/// key < 8M, value <3G, ANY bytes! (e.g: \0 \r ")
 ///
-/// ttl (один на всю БД) задаётся в момент открытия БД
+/// TTL (one for whole DB) is set at the moment of opening the database
 ///
-/// Открыть ту же самую БД можно только для чтения (так делают backup replica)
+/// You can open the same database read-only (this is what backup replica does)
+///
+/// Merge only in C
+///
+/// Cleanup in Java
 @Slf4j
 public class RocksDBTest {
 	static {
@@ -189,7 +193,11 @@ public class RocksDBTest {
 			.setWriteBufferSize(128 * 1024 * 1024)
 			.setCompressionType(CompressionType.ZSTD_COMPRESSION)
 			.setUseFsync(false)
-			.setMaxWriteBufferNumber(6);
+			.setMaxWriteBufferNumber(6)
+
+			.setOptimizeFiltersForHits(true) // faster read: in our case all keys are hits
+			.setIncreaseParallelism(4) // Background threads for compaction 🤷‍♀️
+			;
 
 		try (RocksDB db = RocksDB.open(options, TEMP_DIR)){
 			System.out.println("1️⃣ Create 10 mi keys");
@@ -206,11 +214,13 @@ public class RocksDBTest {
 			System.out.println(perfToString(t, now(), MAX));// 2647ms, op/s = 1_888_931
 
 			// verify all keys
+			t = now();
 			for (int i = 0; i < MAX; ){
 				var e = db.get(Long.toString(7900_000_00_00L + i).getBytes(ISO_8859_1));
 				assertEquals(Long.toString(7900_000_00_00L + i).repeat(7), asLatin1(e));
 				if (++i % 100_000 == 0) System.out.println(i);
 			}
+			System.out.println(perfToString(t, now(), MAX));// 46_586 ms, op/s = 214_657
 		}
 	}
 	static void putter (RocksDB db, byte[] key, byte[] value) {
