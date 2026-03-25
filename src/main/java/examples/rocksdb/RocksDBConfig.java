@@ -3,6 +3,7 @@ package examples.rocksdb;
 import com.google.common.base.Verify;
 import com.google.common.util.concurrent.Uninterruptibles;
 import com.google.errorprone.annotations.CanIgnoreReturnValue;
+import examples.MagicUtils;
 import lombok.SneakyThrows;
 import lombok.val;
 import org.jspecify.annotations.Nullable;
@@ -32,6 +33,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ThreadLocalRandom;
 import java.util.concurrent.TimeUnit;
 
+import static examples.MagicUtils.close;
 import static java.nio.charset.StandardCharsets.*;
 
 public final class RocksDBConfig {
@@ -115,7 +117,7 @@ public final class RocksDBConfig {
 		Uninterruptibles.sleepUninterruptibly(10, TimeUnit.SECONDS);
 
 		rocksDB.cancelAllBackgroundWork(true); // Wait for BG jobs
-		columnFamilyHandles.values().forEach(RocksDBConfig::close);
+		columnFamilyHandles.values().forEach(MagicUtils::close);
 		cfDescriptors.forEach(d->close(d.getOptions()));
 		close(blockCache);
 		close(rocksDB);
@@ -200,14 +202,6 @@ public final class RocksDBConfig {
 			return db().getLongProperty(cfh, "rocksdb.estimate-num-keys");// usually wrong
 		} catch (RocksDBException e){
 			return -1;
-		}
-	}
-
-	public static void close (@Nullable AutoCloseable c) {
-		try {
-			c.close();
-		} catch (Throwable e) {
-			e.printStackTrace();
 		}
 	}
 
