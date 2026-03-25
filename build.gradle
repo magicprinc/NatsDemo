@@ -154,8 +154,7 @@ dependencies {
 	//testImplementation("org.apache.ignite:ignite-storage-rocksdb:3.+")
 	testRuntimeOnly libs.bundles.junitRuntime
 	testImplementation libs.testcontainers.junit
-	//testImplementation libs.rocksdb
-	implementation files('lib/rocksdbjni-10.5.1.jar')
+	implementation libs.rocksdb
 	testImplementation libs.jdbc.sqlite
 }
 

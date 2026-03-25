@@ -3,16 +3,16 @@
 [versions]
 jdk = "21"
 
-groovy = "5.0.0"
+groovy = "5.0.4"
 spring = "6.+"
 springBoot = "3.+"
-jackson = "2.19.+!!"
-mssql = "13.2.0.jre11"
-eclipseCollections = "11.+"
-ebeanVersion = "15.+"
-slf4jVersion = "2.0.+!!"
-micrometerVersion = "1.15.+!!"
-vaadinHillaVersion = "24.8.7"
+jackson = "2.+"
+mssql = "13.4.0.jre11"
+eclipseCollections = "13.+"
+ebeanVersion = "17.+"
+slf4jVersion = "2.0.+"
+micrometerVersion = "1.16.+"
+vaadinHillaVersion = "24.9.13"
 
 ########################################################################################################################
 # implementation libs.groovy.json
@@ -53,7 +53,7 @@ jdbc_h2 = { module = "com.h2database:h2", version="latest.release" } # ~2.2.224 
 jdbc_sqlite = { module = "org.xerial:sqlite-jdbc", version="latest.release" }
 # https://duckdb.org/docs/stable/clients/java.html
 jdbc_duckdb = { module = "org.duckdb:duckdb_jdbc", version="latest.release" }
-rocksdb = { module = "org.rocksdb:rocksdbjni", version="10.2.+" } # 10.4.2 без dll 😱
+rocksdb = { module = "org.rocksdb:rocksdbjni", version="10.+" } # 10.4.2 без dll 😱
 
 groovyCore = { module = "org.apache.groovy:groovy", version.ref="groovy" }
 groovyTemplates = { module = "org.apache.groovy:groovy-templates", version.ref="groovy" }
@@ -61,16 +61,16 @@ groovyServlet = { module = "org.apache.groovy:groovy-servlet", version.ref="groo
 groovyJson = { module = "org.apache.groovy:groovy-json", version.ref="groovy" }
 groovyXml = { module = "org.apache.groovy:groovy-xml", version.ref="groovy" }
 
-guava = { module = "com.google.guava:guava", version="33.4.8-jre" }
+guava = { module = "com.google.guava:guava", version="33.5.0-jre" }
 # https://github.com/dynatrace-oss/hash4j ➕ https://www.dynatrace.com/news/blog/hash4j-new-library-java/
 hash4j = { module = "com.dynatrace.hash4j:hash4j", version="latest.release" }
 # https://github.com/RoaringBitmap/RoaringBitmap ➕ http://roaringbitmap.org/
 roaringBitmap = { module = "com.github.RoaringBitmap:RoaringBitmap", version="latest.release" }
 commonsLang3 = { module = "org.apache.commons:commons-lang3", version="latest.release" }
 commonsCollections4 = { module = "org.apache.commons:commons-collections4", version="latest.release" } # prefer Guava, Spring, JCTools, FastUtil, eclipse-collections
-apacheCommonsIo = { module = "commons-io:commons-io", version="latest.release" }
+apacheCommonsIo = { module = "commons-io:commons-io", version="2.+" }
 apacheCommonsCodec = { module = "commons-codec:commons-codec", version="latest.release" }
-apacheCommonsFileUpload = { module = "commons-fileupload:commons-fileupload", version="latest.release" }
+apacheCommonsFileUpload = { module = "commons-fileupload:commons-fileupload", version="1.+" }
 apacheCommonsText = { module = "org.apache.commons:commons-text", version="latest.release" }
 apacheCommonsMath = { module = "org.apache.commons:commons-math3", version="latest.release" }
 apacheCommonsValidator = { module = "commons-validator:commons-validator", version="latest.release" }
@@ -157,12 +157,16 @@ eclipseCollectionsTest = { module = "org.eclipse.collections:eclipse-collections
 # https://github.com/JCTools/JCTools ➕ https://www.baeldung.com/java-concurrency-jc-tools
 jctools = { module = "org.jctools:jctools-core", version="4.+" }
 # https://tech.trivago.com/post/2022-03-09-why-and-how-we-use-primitive-maps ➕ https://github.com/magicprinc/fastutil-concurrent-wrapper
-fastutilConcurrentWrapper = { module = "com.github.magicprinc:fastutil-concurrent-wrapper", version="0.4.2a" }
+fastutilConcurrentWrapper = { module = "com.github.magicprinc:fastutil-concurrent-wrapper", version="0.5.3" }
 
-okHttpClient = { module = "com.squareup.okhttp3:okhttp", version="4.+" }
-okhttpLoggingInterceptor = { module = "com.squareup.okhttp3:logging-interceptor", version="4.+" }
-okhttpInterceptorBrotli = { module = "com.squareup.okhttp3:okhttp-brotli", version="4.+" }
-okio = { module = "com.squareup.okio:okio", version="3.+" }
+# https://github.com/softwaremill/jox + https://jox.softwaremill.com/
+softwaremill-jox-channels = { module = "com.softwaremill.jox:channels", version="latest.release" }
+softwaremill-jox-structured = { module = "com.softwaremill.jox:structured", version="latest.release" }
+
+okHttpClient = { module = "com.squareup.okhttp3:okhttp", version="5.+" }
+okhttpLoggingInterceptor = { module = "com.squareup.okhttp3:logging-interceptor", version="5.+" }
+okhttpInterceptorBrotli = { module = "com.squareup.okhttp3:okhttp-brotli", version="5.+" }
+okhttpInterceptorZStd = { module = "com.squareup.okhttp3:okhttp-zstd", version="5.+" }
 
 jsoup = { module = "org.jsoup:jsoup", version="1.+" } # jsoup HTML parser library @ https://jsoup.org/
 
@@ -218,7 +222,7 @@ springBootAutoconfigureProcessor = { module = "org.springframework.boot:spring-b
 
 # implementation('io.ebean:ebean-spring-txn:latest.release')// config = new DatabaseConfig(); config.setExternalTransactionManager(new SpringJdbcTransactionManager());
 ebean-spring-txn = { module = "io.ebean:ebean-spring-txn", version.ref="ebeanVersion" }
-ebean-hibean = { module = 'com.github.magicprinc:hibean', version="2.2" }
+ebean-hibean = { module = 'com.github.magicprinc:hibean', version="2.3" }
 ebean-core = { module = "io.ebean:ebean", version.ref="ebeanVersion" }
 ebean-avaje-config = { module = "io.avaje:avaje-config", version="latest.release" }
 ebean-querybean = { module = "io.ebean:ebean-querybean", version.ref="ebeanVersion" }
@@ -280,15 +284,15 @@ jakartaServletApi = { module = "jakarta.servlet:jakarta.servlet-api", version="6
 
 ########################################################################################################################
 # *** TEST TEST TEST ***
-junitJupiter = { module = "org.junit.jupiter:junit-jupiter", version="5.13.+" }
-junitVintageEngine = { module = "org.junit.vintage:junit-vintage-engine", version="5.13.+" }
+junitJupiter = { module = "org.junit.jupiter:junit-jupiter", version="5.+" }
+junitVintageEngine = { module = "org.junit.vintage:junit-vintage-engine", version="5.+" }
 mockitoCore = { module = "org.mockito:mockito-core", version="latest.release" }
 mockitoJunitJupiter = { module = "org.mockito:mockito-junit-jupiter", version="latest.release" }
 # https://github.com/junit-pioneer/junit-pioneer ➕ https://junit-pioneer.org/ ➕ https://github.com/junit-team/junit5/discussions/2697
 junitPioneer = { module = "org.junit-pioneer:junit-pioneer", version="latest.release" }
 googleTruth = { module = "com.google.truth:truth", version="latest.release" }
 # https://github.com/approvals/ApprovalTests.Java ➕ https://approvaltests.com/ ➕ https://github.com/junit-team/junit5/discussions/2697
-approvalTests = { module = "com.approvaltests:approvaltests", version="24.+" } #todo watch approvaltests
+approvalTests = { module = "com.approvaltests:approvaltests", version="latest.release" }
 springTest = { module = "org.springframework:spring-test", version.ref="spring" }
 springBootStarterTest = { module = "org.springframework.boot:spring-boot-starter-test", version.ref="springBoot" }
 
@@ -330,7 +334,7 @@ junit = [ # "hikariCP" boot обнаруживает его и требует jd
 	"junitJupiter","mockitoCore","mockitoJunitJupiter", "googleTruth", "approvalTests", "junitPioneer",
   "springTest","springBootStarterTest",
 	"eclipseCollectionsTest","jsonAssert",
-	"okHttp-mockWebServer","okio","okHttpClient",
+	"okHttp-mockWebServer","okHttpClient",
 	"groovyCore","groovyTemplates",
 	"testEasyRandom", "testEasyRandomValidation", "testInstancio", # "testInstancioQuickCheck"
 	"slf4jApi", "slf4jJCL", "slf4jJUL", "slf4jLog4j",
@@ -357,7 +361,7 @@ groovy = ["groovyCore","groovyTemplates", "groovyJson", "groovyXml"] # "groovySe
 smallryeConfig = ["smallryeConfig","smallryeConfigSourceYaml","snakeYaml","smallryeConfigValidator","jakarta-validationApi","jakarta-annotationApi","jbossLogging",
 		"smallryeConfigCrypto", "typesafeConfigHocon"]
 
-okHttp = ["okHttpClient","okhttpLoggingInterceptor","okio","okhttpInterceptorBrotli"]
+okHttp = ["okHttpClient","okhttpLoggingInterceptor","okhttpInterceptorBrotli"]
 
 slf4j = ["slf4jApi", "slf4jJCL", "slf4jJUL", "slf4jLog4j"]
 
@@ -410,13 +414,13 @@ ebean = { id = "io.ebean", version="latest.release" }
 gitVersion = { id = "com.palantir.git-version", version="latest.release" }
 
 # https://github.com/n0mer/gradle-git-properties Produce build/resources/main/git.properties for spring-boot-actuator
-gradleGitProperties = { id = "com.gorylenko.gradle-git-properties", version="2.4.+" } # latest.release
+gradleGitProperties = { id = "com.gorylenko.gradle-git-properties", version="latest.release" }
 
 # https://github.com/Im-Fran/GradleDotEnv  →  https://plugins.gradle.org/plugin/cl.franciscosolis.gradledotenv
 dotEnv = { id = "cl.franciscosolis.gradledotenv", version="latest.release" }
 
 # https://gretty-gradle-plugin.github.io/gretty-doc/index.html  ➕  https://github.com/gretty-gradle-plugin/gretty/tree/gretty-3.x
-grettyWebContainer = { id = "org.gretty", version="3.+" } # 4.+ for jakarta packages
+grettyWebContainer = { id = "org.gretty", version="latest.release" }
 
 # https://github.com/spotbugs/spotbugs + https://github.com/spotbugs/spotbugs-gradle-plugin
 spotBugs = { id = "com.github.spotbugs", version="latest.release" }
@@ -428,3 +432,6 @@ vaadinHilla = { id = "com.vaadin", version.ref = "vaadinHillaVersion" }
 
 # https://github.com/gradlex-org/reproducible-builds
 reproducible-builds = { id = "org.gradlex.reproducible-builds", version='latest.release' }
+
+# https://github.com/cmu-pasta/fray
+testFray = { id = "org.pastalab.fray.gradle", version='latest.release' }
